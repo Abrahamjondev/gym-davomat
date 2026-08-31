@@ -89,10 +89,10 @@ export default function MonthCalendar({
                 "relative aspect-square rounded-xl text-sm font-medium transition-all",
                 "flex items-center justify-center select-none",
                 went
-                  ? "bg-neutral-900 text-white shadow-[0_2px_10px_rgba(0,0,0,0.18)]"
-                  : "bg-neutral-50 text-neutral-400 hover:bg-neutral-100",
-                isToday && !went ? "ring-2 ring-neutral-900 ring-offset-1" : "",
-                isToday && went ? "ring-2 ring-neutral-900/20 ring-offset-1" : "",
+                  ? "bg-green-500 text-white shadow-[0_2px_12px_rgba(34,197,94,0.4)]"
+                  : "bg-neutral-50 text-neutral-400 hover:bg-neutral-100 active:bg-neutral-200",
+                isToday && !went ? "ring-2 ring-green-500 ring-offset-1" : "",
+                isToday && went ? "ring-2 ring-green-700/40 ring-offset-1" : "",
                 isFuture ? "opacity-40 cursor-not-allowed" : "cursor-pointer",
                 animating ? "mark-pop" : "",
               ].join(" ")}

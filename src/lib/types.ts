@@ -6,6 +6,7 @@ export interface DayEntry {
   note?: string; // qisqa izoh
   muscle?: string; // mushak guruhi (masalan "Ko'krak / Trisep")
   mood?: Mood; // kayfiyat
+  hasPhoto?: boolean; // shu kunga rasm biriktirilganmi (rasmning o'zi alohida saqlanadi)
 }
 
 export interface Config {
