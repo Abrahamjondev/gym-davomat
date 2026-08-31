@@ -36,6 +36,11 @@ export default function Dashboard() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [animatingKey, setAnimatingKey] = useState<string | null>(null);
+  const [counts, setCounts] = useState<{
+    views: number;
+    visitors: number;
+    today: number;
+  } | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/data", { cache: "no-store" });
@@ -47,6 +52,14 @@ export default function Dashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Tashrifni bir marta hisoblaymiz (sahifa ochilganda).
+  useEffect(() => {
+    fetch("/api/view", { method: "POST" })
+      .then((r) => r.json())
+      .then(setCounts)
+      .catch(() => {});
+  }, []);
 
   const isOwner = data?.isOwner ?? false;
   const days = data?.days ?? {};
@@ -154,6 +167,21 @@ export default function Dashboard() {
           )}
         </div>
       </header>
+
+      {/* Tashrifchilar hisoblagichi */}
+      {counts && (
+        <div className="fade-up mb-5 flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-card px-3 py-1.5">
+            👁 <b className="text-foreground">{counts.views.toLocaleString()}</b> ko&apos;rish
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-card px-3 py-1.5">
+            🧑 <b className="text-foreground">{counts.visitors.toLocaleString()}</b> tashrifchi
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-card px-3 py-1.5">
+            📅 bugun <b className="text-foreground">{counts.today.toLocaleString()}</b>
+          </span>
+        </div>
+      )}
 
       {/* Bugungi holat + davomat tugmasi */}
       <TodayCard

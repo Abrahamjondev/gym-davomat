@@ -9,6 +9,19 @@ import { DayEntry, Config, DB, DEFAULT_CONFIG } from "./types";
 const DAYS_KEY = "gym:days";
 const CONFIG_KEY = "gym:config";
 const PHOTOS_KEY = "gym:photos";
+const VIEWS_KEY = "gym:views";
+const VISITORS_KEY = "gym:visitors";
+
+export interface Counts {
+  views: number; // umumiy ko'rishlar
+  visitors: number; // unikal tashrifchilar
+  today: number; // bugungi ko'rishlar
+}
+
+function num(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
 
 const hasRedis =
   !!process.env.UPSTASH_REDIS_REST_URL &&
@@ -66,6 +79,29 @@ async function redisRemovePhoto(date: string) {
   await redis.hdel(PHOTOS_KEY, date);
 }
 
+async function redisGetCounts(todayKey: string): Promise<Counts> {
+  const redis = await redisClient();
+  const [views, visitors, today] = await Promise.all([
+    redis.get(VIEWS_KEY),
+    redis.get(VISITORS_KEY),
+    redis.get(`${VIEWS_KEY}:${todayKey}`),
+  ]);
+  return { views: num(views), visitors: num(visitors), today: num(today) };
+}
+
+async function redisRegisterView(
+  newVisitor: boolean,
+  todayKey: string,
+): Promise<Counts> {
+  const redis = await redisClient();
+  const views = await redis.incr(VIEWS_KEY);
+  const today = await redis.incr(`${VIEWS_KEY}:${todayKey}`);
+  const visitors = newVisitor
+    ? await redis.incr(VISITORS_KEY)
+    : num(await redis.get(VISITORS_KEY));
+  return { views: num(views), visitors: num(visitors), today: num(today) };
+}
+
 // ---------- File backend (dev) ----------
 import { promises as fs } from "fs";
 import path from "path";
@@ -73,10 +109,17 @@ import path from "path";
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "db.json");
 
+interface Meta {
+  views: number;
+  visitors: number;
+  daily: Record<string, number>; // date -> views
+}
+
 interface RawFile {
   days: Record<string, DayEntry>;
   config: Config;
   photos: Record<string, string>; // date -> dataURL
+  meta: Meta;
 }
 
 async function fileReadRaw(): Promise<RawFile> {
@@ -87,9 +130,19 @@ async function fileReadRaw(): Promise<RawFile> {
       days: parsed.days ?? {},
       config: { ...DEFAULT_CONFIG, ...(parsed.config ?? {}) },
       photos: parsed.photos ?? {},
+      meta: {
+        views: parsed.meta?.views ?? 0,
+        visitors: parsed.meta?.visitors ?? 0,
+        daily: parsed.meta?.daily ?? {},
+      },
     };
   } catch {
-    return { days: {}, config: { ...DEFAULT_CONFIG }, photos: {} };
+    return {
+      days: {},
+      config: { ...DEFAULT_CONFIG },
+      photos: {},
+      meta: { views: 0, visitors: 0, daily: {} },
+    };
   }
 }
 
@@ -151,6 +204,33 @@ export async function removePhoto(date: string): Promise<void> {
   const raw = await fileReadRaw();
   delete raw.photos[date];
   await fileWriteRaw(raw);
+}
+
+export async function getCounts(todayKey: string): Promise<Counts> {
+  if (hasRedis) return redisGetCounts(todayKey);
+  const raw = await fileReadRaw();
+  return {
+    views: raw.meta.views,
+    visitors: raw.meta.visitors,
+    today: raw.meta.daily[todayKey] ?? 0,
+  };
+}
+
+export async function registerView(
+  newVisitor: boolean,
+  todayKey: string,
+): Promise<Counts> {
+  if (hasRedis) return redisRegisterView(newVisitor, todayKey);
+  const raw = await fileReadRaw();
+  raw.meta.views += 1;
+  raw.meta.daily[todayKey] = (raw.meta.daily[todayKey] ?? 0) + 1;
+  if (newVisitor) raw.meta.visitors += 1;
+  await fileWriteRaw(raw);
+  return {
+    views: raw.meta.views,
+    visitors: raw.meta.visitors,
+    today: raw.meta.daily[todayKey],
+  };
 }
 
 export function usingRedis() {
