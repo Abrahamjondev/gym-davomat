@@ -56,7 +56,7 @@ export default function YearHeatmap({ year, days, todayKey, onDayClick }: Props)
         <div className="flex items-center gap-2 text-[11px] text-muted">
           <span>Kam</span>
           <span className="h-3 w-3 rounded-[3px] bg-neutral-100" />
-          <span className="h-3 w-3 rounded-[3px] bg-green-500" />
+          <span className="h-3 w-3 rounded-[3px] bg-neutral-800" />
           <span>Bordim</span>
         </div>
       </div>
@@ -98,9 +98,9 @@ export default function YearHeatmap({ year, days, todayKey, onDayClick }: Props)
                       className={[
                         "h-3 w-3 rounded-[3px] transition",
                         went
-                          ? "bg-green-500 hover:bg-green-600"
+                          ? "bg-neutral-800 hover:bg-neutral-800"
                           : "bg-neutral-100 hover:bg-neutral-200",
-                        isToday ? "ring-1 ring-green-600 ring-offset-1" : "",
+                        isToday ? "ring-1 ring-neutral-800 ring-offset-1" : "",
                         isFuture ? "opacity-30 cursor-default" : "cursor-pointer",
                       ].join(" ")}
                     />

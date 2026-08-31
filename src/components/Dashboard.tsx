@@ -69,7 +69,7 @@ export default function Dashboard() {
       particleCount: 70,
       spread: 65,
       origin: { y: 0.7 },
-      colors: ["#22c55e", "#16a34a", "#4ade80", "#86efac"],
+      colors: ["#525252", "#404040", "#737373", "#a3a3a3"],
       scalar: 0.9,
     });
   };
@@ -123,7 +123,7 @@ export default function Dashboard() {
         <div className="flex flex-col items-end gap-2">
           {isOwner ? (
             <>
-              <span className="rounded-full bg-green-600 px-3 py-1 text-xs font-medium text-white">
+              <span className="rounded-full bg-neutral-800 px-3 py-1 text-xs font-medium text-white">
                 Egasi
               </span>
               <div className="flex gap-2">
@@ -265,7 +265,7 @@ function TodayCard({
       className={[
         "fade-up mb-5 flex items-center justify-between gap-3 rounded-2xl border p-4 sm:p-5",
         went
-          ? "border-green-500 bg-green-500 text-white shadow-[0_4px_20px_rgba(34,197,94,0.35)]"
+          ? "border-neutral-800 bg-neutral-800 text-white shadow-[0_4px_20px_rgba(0,0,0,0.35)]"
           : "border-border-soft bg-card",
       ].join(" ")}
     >
@@ -287,8 +287,8 @@ function TodayCard({
         className={[
           "shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-95",
           went
-            ? "bg-white text-green-700 hover:bg-green-50"
-            : "bg-green-600 text-white hover:bg-green-700",
+            ? "bg-white text-neutral-900 hover:bg-neutral-100"
+            : "bg-neutral-800 text-white hover:bg-neutral-900",
         ].join(" ")}
       >
         {went ? "Ko'rish" : isOwner ? "Bugun bordim" : "Belgilash"}
@@ -327,7 +327,7 @@ function StatsGrid({ stats, config }: { stats: Stats; config: Config }) {
           className={[
             "rounded-xl border p-3",
             "highlight" in it && it.highlight
-              ? "border-green-500 bg-green-500 text-white shadow-[0_2px_12px_rgba(34,197,94,0.3)]"
+              ? "border-neutral-800 bg-neutral-800 text-white shadow-[0_2px_12px_rgba(0,0,0,0.3)]"
               : "border-border-soft bg-card",
           ].join(" ")}
         >
@@ -361,7 +361,7 @@ function Achievements({ stats }: { stats: Stats }) {
             className={[
               "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition",
               a.unlocked
-                ? "border-green-500 bg-green-50 text-green-700"
+                ? "border-neutral-800 bg-neutral-100 text-neutral-900"
                 : "border-dashed border-border-soft bg-transparent text-neutral-300",
             ].join(" ")}
           >
@@ -471,7 +471,7 @@ function DayModal({
     [
       "rounded-full border px-2.5 py-1.5 text-xs transition active:scale-95",
       active
-        ? "border-green-500 bg-green-500 text-white"
+        ? "border-neutral-800 bg-neutral-800 text-white"
         : "border-border-soft text-muted hover:border-neutral-300",
     ].join(" ");
 
@@ -504,7 +504,7 @@ function DayModal({
                 value={muscle}
                 onChange={(e) => setMuscle(e.target.value)}
                 placeholder="yoki o'zing yoz…"
-                className="w-full rounded-lg border border-border-soft bg-card px-3 py-2.5 text-base outline-none focus:border-green-400"
+                className="w-full rounded-lg border border-border-soft bg-card px-3 py-2.5 text-base outline-none focus:border-neutral-400"
               />
             </div>
 
@@ -559,7 +559,7 @@ function DayModal({
                 <button
                   onClick={() => fileRef.current?.click()}
                   disabled={photoBusy}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-4 py-4 text-sm font-medium text-muted transition hover:border-green-400 hover:text-green-600 disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-4 py-4 text-sm font-medium text-muted transition hover:border-neutral-400 hover:text-neutral-800 disabled:opacity-60"
                 >
                   {photoBusy ? "Tayyorlanmoqda…" : "📷 Kamera orqali rasm olish"}
                 </button>
@@ -583,7 +583,7 @@ function DayModal({
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 placeholder="Bugun qanday o'tdi?"
-                className="w-full resize-none rounded-lg border border-border-soft bg-card px-3 py-2.5 text-base outline-none focus:border-green-400"
+                className="w-full resize-none rounded-lg border border-border-soft bg-card px-3 py-2.5 text-base outline-none focus:border-neutral-400"
               />
             </div>
 
@@ -591,7 +591,7 @@ function DayModal({
               <button
                 onClick={save}
                 disabled={saving}
-                className="flex-1 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-95 disabled:opacity-60"
+                className="flex-1 rounded-xl bg-neutral-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-900 active:scale-95 disabled:opacity-60"
               >
                 {saving ? "Saqlanmoqda…" : went ? "Saqlash" : "Bordim ✅"}
               </button>
@@ -686,7 +686,7 @@ function LoginModal({
       <button
         onClick={submit}
         disabled={busy || !pin}
-        className="mt-4 w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-95 disabled:opacity-40"
+        className="mt-4 w-full rounded-xl bg-neutral-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-900 active:scale-95 disabled:opacity-40"
       >
         {busy ? "Tekshirilmoqda…" : "Kirish"}
       </button>
@@ -738,12 +738,12 @@ function SettingsModal({
             max={7}
             value={goal}
             onChange={(e) => setGoal(Number(e.target.value))}
-            className="w-full accent-green-600"
+            className="w-full accent-neutral-800"
           />
         </div>
         <button
           onClick={save}
-          className="w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-95"
+          className="w-full rounded-xl bg-neutral-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-900 active:scale-95"
         >
           Saqlash
         </button>
