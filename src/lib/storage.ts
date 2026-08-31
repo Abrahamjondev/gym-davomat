@@ -11,6 +11,11 @@ const CONFIG_KEY = "gym:config";
 const PHOTOS_KEY = "gym:photos";
 const VIEWS_KEY = "gym:views";
 const VISITORS_KEY = "gym:visitors";
+const AVATAR_KEY = "gym:avatar";
+const REACTIONS_KEY = "gym:reactions";
+
+export const REACTIONS = ["💪", "🔥", "👏", "❤️"] as const;
+export type ReactionCounts = Record<string, number>;
 
 export interface Counts {
   views: number; // umumiy ko'rishlar
@@ -102,6 +107,29 @@ async function redisRegisterView(
   return { views: num(views), visitors: num(visitors), today: num(today) };
 }
 
+async function redisGetAvatar(): Promise<string | null> {
+  const redis = await redisClient();
+  return (await redis.get<string>(AVATAR_KEY)) ?? null;
+}
+
+async function redisGetReactions(): Promise<ReactionCounts> {
+  const redis = await redisClient();
+  const h = await redis.hgetall<ReactionCounts>(REACTIONS_KEY);
+  return normalizeReactions(h ?? {});
+}
+
+async function redisAddReaction(emoji: string): Promise<ReactionCounts> {
+  const redis = await redisClient();
+  await redis.hincrby(REACTIONS_KEY, emoji, 1);
+  return redisGetReactions();
+}
+
+function normalizeReactions(raw: Record<string, unknown>): ReactionCounts {
+  const out: ReactionCounts = {};
+  for (const e of REACTIONS) out[e] = num(raw[e]);
+  return out;
+}
+
 // ---------- File backend (dev) ----------
 import { promises as fs } from "fs";
 import path from "path";
@@ -120,6 +148,8 @@ interface RawFile {
   config: Config;
   photos: Record<string, string>; // date -> dataURL
   meta: Meta;
+  reactions: ReactionCounts;
+  avatar?: string; // dataURL
 }
 
 async function fileReadRaw(): Promise<RawFile> {
@@ -135,6 +165,8 @@ async function fileReadRaw(): Promise<RawFile> {
         visitors: parsed.meta?.visitors ?? 0,
         daily: parsed.meta?.daily ?? {},
       },
+      reactions: normalizeReactions(parsed.reactions ?? {}),
+      avatar: parsed.avatar,
     };
   } catch {
     return {
@@ -142,6 +174,7 @@ async function fileReadRaw(): Promise<RawFile> {
       config: { ...DEFAULT_CONFIG },
       photos: {},
       meta: { views: 0, visitors: 0, daily: {} },
+      reactions: normalizeReactions({}),
     };
   }
 }
@@ -231,6 +264,48 @@ export async function registerView(
     visitors: raw.meta.visitors,
     today: raw.meta.daily[todayKey],
   };
+}
+
+export async function getAvatar(): Promise<string | null> {
+  if (hasRedis) return redisGetAvatar();
+  const raw = await fileReadRaw();
+  return raw.avatar ?? null;
+}
+
+export async function setAvatar(dataUrl: string): Promise<void> {
+  if (hasRedis) {
+    const redis = await redisClient();
+    await redis.set(AVATAR_KEY, dataUrl);
+    return;
+  }
+  const raw = await fileReadRaw();
+  raw.avatar = dataUrl;
+  await fileWriteRaw(raw);
+}
+
+export async function removeAvatar(): Promise<void> {
+  if (hasRedis) {
+    const redis = await redisClient();
+    await redis.del(AVATAR_KEY);
+    return;
+  }
+  const raw = await fileReadRaw();
+  delete raw.avatar;
+  await fileWriteRaw(raw);
+}
+
+export async function getReactions(): Promise<ReactionCounts> {
+  if (hasRedis) return redisGetReactions();
+  const raw = await fileReadRaw();
+  return normalizeReactions(raw.reactions);
+}
+
+export async function addReaction(emoji: string): Promise<ReactionCounts> {
+  if (hasRedis) return redisAddReaction(emoji);
+  const raw = await fileReadRaw();
+  raw.reactions[emoji] = (raw.reactions[emoji] ?? 0) + 1;
+  await fileWriteRaw(raw);
+  return normalizeReactions(raw.reactions);
 }
 
 export function usingRedis() {

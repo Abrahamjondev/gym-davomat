@@ -9,12 +9,17 @@ import { toKey } from "@/lib/stats";
 import { compressImage } from "@/lib/image";
 import MonthCalendar from "./MonthCalendar";
 import YearHeatmap from "./YearHeatmap";
+import MonthlyChart from "./MonthlyChart";
+
+const REACTIONS = ["💪", "🔥", "👏", "❤️"];
 
 interface ApiData {
   days: Record<string, DayEntry>;
   config: Config;
   stats: Stats;
   isOwner: boolean;
+  avatar: string | null;
+  reactions: Record<string, number>;
 }
 
 const MOOD_LABELS: Record<Mood, string> = {
@@ -109,6 +114,49 @@ export default function Dashboard() {
     await load();
   };
 
+  // Profil rasmini yuklash (egasi).
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const onPickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAvatarBusy(true);
+    try {
+      const dataUrl = await compressImage(file, 320, 0.8);
+      await fetch("/api/avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar: dataUrl }),
+      });
+      await load();
+    } catch {
+      // e'tiborsiz
+    }
+    setAvatarBusy(false);
+  };
+
+  // Reaksiya bosish (hamma).
+  const react = async (emoji: string) => {
+    // optimistik
+    setData((d) =>
+      d
+        ? { ...d, reactions: { ...d.reactions, [emoji]: (d.reactions[emoji] ?? 0) + 1 } }
+        : d,
+    );
+    try {
+      const res = await fetch("/api/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji }),
+      });
+      const json = await res.json();
+      if (json?.reactions) setData((d) => (d ? { ...d, reactions: json.reactions } : d));
+    } catch {
+      // e'tiborsiz
+    }
+  };
+
   if (loading) {
     return (
       <div className="grid min-h-screen place-items-center text-muted">
@@ -124,14 +172,52 @@ export default function Dashboard() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:py-10">
       {/* Header */}
       <header className="fade-up mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-muted">
-            Gym Davomat
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-            {config.ownerName}
-          </h1>
-          <p className="mt-1 text-sm text-muted">{quoteOfDay(now)}</p>
+        <div className="flex items-center gap-3">
+          {/* Avatar (dumaloq profil rasmi) */}
+          <button
+            onClick={() => isOwner && avatarInputRef.current?.click()}
+            disabled={!isOwner || avatarBusy}
+            className={[
+              "relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-border-soft bg-neutral-100 sm:h-16 sm:w-16",
+              isOwner ? "cursor-pointer" : "cursor-default",
+            ].join(" ")}
+            title={isOwner ? "Rasmni o'zgartirish" : config.ownerName}
+          >
+            {data!.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={data!.avatar}
+                alt={config.ownerName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="grid h-full w-full place-items-center text-xl font-bold text-neutral-400">
+                {config.ownerName.charAt(0).toUpperCase()}
+              </span>
+            )}
+            {isOwner && (
+              <span className="absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center text-[9px] font-medium text-white">
+                {avatarBusy ? "..." : "📷"}
+              </span>
+            )}
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={onPickAvatar}
+          />
+
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted">
+              Gym Davomat
+            </p>
+            <h1 className="mt-0.5 text-2xl font-bold tracking-tight sm:text-3xl">
+              {config.ownerName}
+            </h1>
+            <p className="mt-1 text-sm text-muted">{quoteOfDay(now)}</p>
+          </div>
         </div>
         <div className="flex flex-col items-end gap-2">
           {isOwner ? (
@@ -227,7 +313,12 @@ export default function Dashboard() {
           todayKey={todayKey}
           onDayClick={handleDayClick}
         />
+
+        <MonthlyChart days={days} />
       </div>
+
+      {/* Reaksiyalar — hamma bosishi mumkin */}
+      <ReactionsBar reactions={data!.reactions} onReact={react} />
 
       <footer className="mt-10 text-center text-xs text-muted">
         {isOwner
@@ -321,6 +412,47 @@ function TodayCard({
       >
         {went ? "Ko'rish" : isOwner ? "Bugun bordim" : "Belgilash"}
       </button>
+    </div>
+  );
+}
+
+/* ---------- Reaksiyalar ---------- */
+function ReactionsBar({
+  reactions,
+  onReact,
+}: {
+  reactions: Record<string, number>;
+  onReact: (emoji: string) => void;
+}) {
+  const [popped, setPopped] = useState<string | null>(null);
+  const total = REACTIONS.reduce((s, e) => s + (reactions[e] ?? 0), 0);
+
+  const tap = (e: string) => {
+    setPopped(e);
+    setTimeout(() => setPopped(null), 400);
+    onReact(e);
+  };
+
+  return (
+    <div className="fade-up mt-5 rounded-2xl border border-border-soft bg-card p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-base font-semibold tracking-tight">Qo&apos;llab-quvvatlash</h2>
+        <span className="text-xs text-muted">{total.toLocaleString()} reaksiya</span>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {REACTIONS.map((e) => (
+          <button
+            key={e}
+            onClick={() => tap(e)}
+            className="flex flex-col items-center gap-1 rounded-xl border border-border-soft py-3 transition hover:border-neutral-300 active:scale-90"
+          >
+            <span className={popped === e ? "mark-pop text-2xl" : "text-2xl"}>{e}</span>
+            <span className="text-xs font-semibold text-foreground">
+              {(reactions[e] ?? 0).toLocaleString()}
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
