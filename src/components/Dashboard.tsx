@@ -10,6 +10,7 @@ import { compressImage } from "@/lib/image";
 import MonthCalendar from "./MonthCalendar";
 import YearHeatmap from "./YearHeatmap";
 import MonthlyChart from "./MonthlyChart";
+import AvatarCropper from "./AvatarCropper";
 
 const REACTIONS = ["💪", "🔥", "👏", "❤️"];
 
@@ -20,6 +21,7 @@ interface ApiData {
   isOwner: boolean;
   avatar: string | null;
   reactions: Record<string, number>;
+  myReactions: string[];
 }
 
 const MOOD_LABELS: Record<Mood, string> = {
@@ -114,34 +116,59 @@ export default function Dashboard() {
     await load();
   };
 
-  // Profil rasmini yuklash (egasi).
+  // Profil rasmini yuklash (egasi) — tanlash -> kesish oynasi -> saqlash.
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
-  const onPickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+
+  const onPickAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.onerror = () => alert("Rasmni o'qib bo'lmadi. Boshqa rasm tanlang.");
+    reader.readAsDataURL(file);
+  };
+
+  const uploadAvatar = async (dataUrl: string) => {
     setAvatarBusy(true);
     try {
-      const dataUrl = await compressImage(file, 320, 0.8);
-      await fetch("/api/avatar", {
+      const res = await fetch("/api/avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatar: dataUrl }),
       });
+      if (!res.ok) throw new Error();
+      setCropSrc(null);
       await load();
     } catch {
-      // e'tiborsiz
+      alert("Rasm saqlanmadi. Qayta urinib ko'ring.");
     }
     setAvatarBusy(false);
   };
 
-  // Reaksiya bosish (hamma).
+  const removeAvatar = async () => {
+    await fetch("/api/avatar", { method: "DELETE" });
+    await load();
+  };
+
+  const triggerAvatarPick = () => avatarInputRef.current?.click();
+
+  // Reaksiya bosish/bekor qilish (har kim bir marta).
   const react = async (emoji: string) => {
-    // optimistik
+    const mine = data?.myReactions ?? [];
+    const has = mine.includes(emoji);
     setData((d) =>
       d
-        ? { ...d, reactions: { ...d.reactions, [emoji]: (d.reactions[emoji] ?? 0) + 1 } }
+        ? {
+            ...d,
+            reactions: {
+              ...d.reactions,
+              [emoji]: Math.max(0, (d.reactions[emoji] ?? 0) + (has ? -1 : 1)),
+            },
+            myReactions: has ? mine.filter((e) => e !== emoji) : [...mine, emoji],
+          }
         : d,
     );
     try {
@@ -151,7 +178,10 @@ export default function Dashboard() {
         body: JSON.stringify({ emoji }),
       });
       const json = await res.json();
-      if (json?.reactions) setData((d) => (d ? { ...d, reactions: json.reactions } : d));
+      if (json?.reactions)
+        setData((d) =>
+          d ? { ...d, reactions: json.reactions, myReactions: json.mine ?? d.myReactions } : d,
+        );
     } catch {
       // e'tiborsiz
     }
@@ -317,8 +347,12 @@ export default function Dashboard() {
         <MonthlyChart days={days} />
       </div>
 
-      {/* Reaksiyalar — hamma bosishi mumkin */}
-      <ReactionsBar reactions={data!.reactions} onReact={react} />
+      {/* Reaksiyalar — hamma bir marta bosishi mumkin */}
+      <ReactionsBar
+        reactions={data!.reactions}
+        mine={data!.myReactions}
+        onReact={react}
+      />
 
       <footer className="mt-10 text-center text-xs text-muted">
         {isOwner
@@ -358,11 +392,29 @@ export default function Dashboard() {
       {settingsOpen && (
         <SettingsModal
           config={config}
+          hasAvatar={!!data!.avatar}
+          onChangeAvatar={() => {
+            setSettingsOpen(false);
+            triggerAvatarPick();
+          }}
+          onRemoveAvatar={async () => {
+            await removeAvatar();
+            setSettingsOpen(false);
+          }}
           onClose={() => setSettingsOpen(false)}
           onSaved={async () => {
             setSettingsOpen(false);
             await load();
           }}
+        />
+      )}
+
+      {cropSrc && (
+        <AvatarCropper
+          src={cropSrc}
+          saving={avatarBusy}
+          onCancel={() => setCropSrc(null)}
+          onSave={uploadAvatar}
         />
       )}
     </main>
@@ -419,9 +471,11 @@ function TodayCard({
 /* ---------- Reaksiyalar ---------- */
 function ReactionsBar({
   reactions,
+  mine,
   onReact,
 }: {
   reactions: Record<string, number>;
+  mine: string[];
   onReact: (emoji: string) => void;
 }) {
   const [popped, setPopped] = useState<string | null>(null);
@@ -440,19 +494,30 @@ function ReactionsBar({
         <span className="text-xs text-muted">{total.toLocaleString()} reaksiya</span>
       </div>
       <div className="grid grid-cols-4 gap-2">
-        {REACTIONS.map((e) => (
-          <button
-            key={e}
-            onClick={() => tap(e)}
-            className="flex flex-col items-center gap-1 rounded-xl border border-border-soft py-3 transition hover:border-neutral-300 active:scale-90"
-          >
-            <span className={popped === e ? "mark-pop text-2xl" : "text-2xl"}>{e}</span>
-            <span className="text-xs font-semibold text-foreground">
-              {(reactions[e] ?? 0).toLocaleString()}
-            </span>
-          </button>
-        ))}
+        {REACTIONS.map((e) => {
+          const active = mine.includes(e);
+          return (
+            <button
+              key={e}
+              onClick={() => tap(e)}
+              className={[
+                "flex flex-col items-center gap-1 rounded-xl border py-3 transition active:scale-90",
+                active
+                  ? "border-neutral-800 bg-neutral-100"
+                  : "border-border-soft hover:border-neutral-300",
+              ].join(" ")}
+            >
+              <span className={popped === e ? "mark-pop text-2xl" : "text-2xl"}>{e}</span>
+              <span className="text-xs font-semibold text-foreground">
+                {(reactions[e] ?? 0).toLocaleString()}
+              </span>
+            </button>
+          );
+        })}
       </div>
+      <p className="mt-2 text-center text-[11px] text-muted">
+        Har bir reaksiyani bir marta bosish mumkin
+      </p>
     </div>
   );
 }
@@ -857,10 +922,16 @@ function LoginModal({
 /* ---------- Sozlamalar modali ---------- */
 function SettingsModal({
   config,
+  hasAvatar,
+  onChangeAvatar,
+  onRemoveAvatar,
   onClose,
   onSaved,
 }: {
   config: Config;
+  hasAvatar: boolean;
+  onChangeAvatar: () => void;
+  onRemoveAvatar: () => void;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -880,6 +951,27 @@ function SettingsModal({
     <Overlay onClose={onClose}>
       <h3 className="text-lg font-semibold">Sozlamalar</h3>
       <div className="mt-4 space-y-4">
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-muted">
+            Profil rasmi
+          </label>
+          <div className="flex gap-2">
+            <button
+              onClick={onChangeAvatar}
+              className="flex-1 rounded-xl border border-border-soft px-4 py-2.5 text-sm font-medium transition hover:border-neutral-300"
+            >
+              📷 Rasm tanlash
+            </button>
+            {hasAvatar && (
+              <button
+                onClick={onRemoveAvatar}
+                className="rounded-xl border border-border-soft px-4 py-2.5 text-sm font-medium text-muted transition hover:border-red-300 hover:text-red-500"
+              >
+                O&apos;chirish
+              </button>
+            )}
+          </div>
+        </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted">Ism</label>
           <input

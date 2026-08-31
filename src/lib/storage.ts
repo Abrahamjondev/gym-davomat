@@ -118,9 +118,13 @@ async function redisGetReactions(): Promise<ReactionCounts> {
   return normalizeReactions(h ?? {});
 }
 
-async function redisAddReaction(emoji: string): Promise<ReactionCounts> {
+async function redisChangeReaction(
+  emoji: string,
+  delta: number,
+): Promise<ReactionCounts> {
   const redis = await redisClient();
-  await redis.hincrby(REACTIONS_KEY, emoji, 1);
+  const v = await redis.hincrby(REACTIONS_KEY, emoji, delta);
+  if (v < 0) await redis.hset(REACTIONS_KEY, { [emoji]: 0 });
   return redisGetReactions();
 }
 
@@ -300,10 +304,13 @@ export async function getReactions(): Promise<ReactionCounts> {
   return normalizeReactions(raw.reactions);
 }
 
-export async function addReaction(emoji: string): Promise<ReactionCounts> {
-  if (hasRedis) return redisAddReaction(emoji);
+export async function changeReaction(
+  emoji: string,
+  delta: number,
+): Promise<ReactionCounts> {
+  if (hasRedis) return redisChangeReaction(emoji, delta);
   const raw = await fileReadRaw();
-  raw.reactions[emoji] = (raw.reactions[emoji] ?? 0) + 1;
+  raw.reactions[emoji] = Math.max(0, (raw.reactions[emoji] ?? 0) + delta);
   await fileWriteRaw(raw);
   return normalizeReactions(raw.reactions);
 }
