@@ -49,14 +49,14 @@ export default function MonthCalendar({
           <button
             onClick={onPrev}
             aria-label="Oldingi oy"
-            className="grid h-8 w-8 place-items-center rounded-lg border border-border-soft text-muted transition hover:bg-neutral-100"
+            className="grid h-8 w-8 place-items-center rounded-lg border border-border-soft text-muted transition hover:bg-surface-2"
           >
             ‹
           </button>
           <button
             onClick={onNext}
             aria-label="Keyingi oy"
-            className="grid h-8 w-8 place-items-center rounded-lg border border-border-soft text-muted transition hover:bg-neutral-100"
+            className="grid h-8 w-8 place-items-center rounded-lg border border-border-soft text-muted transition hover:bg-surface-2"
           >
             ›
           </button>
@@ -89,17 +89,17 @@ export default function MonthCalendar({
                 "relative aspect-square rounded-xl text-sm font-medium transition-all",
                 "flex items-center justify-center select-none",
                 went
-                  ? "bg-neutral-800 text-white shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
-                  : "bg-neutral-50 text-neutral-400 hover:bg-neutral-100 active:bg-neutral-200",
-                isToday && !went ? "ring-2 ring-neutral-800 ring-offset-1" : "",
-                isToday && went ? "ring-2 ring-neutral-900/40 ring-offset-1" : "",
+                  ? "bg-accent text-accent-fg shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
+                  : "bg-surface text-muted hover:bg-surface-2 active:bg-surface-2",
+                isToday && !went ? "ring-2 ring-accent ring-offset-1 ring-offset-card" : "",
+                isToday && went ? "ring-2 ring-accent/40 ring-offset-1 ring-offset-card" : "",
                 isFuture ? "opacity-40 cursor-not-allowed" : "cursor-pointer",
                 animating ? "mark-pop" : "",
               ].join(" ")}
             >
               {d}
               {went && entry?.muscle && (
-                <span className="absolute bottom-1 h-1 w-1 rounded-full bg-white/70" />
+                <span className="absolute bottom-1 h-1 w-1 rounded-full bg-accent-fg/70" />
               )}
             </button>
           );

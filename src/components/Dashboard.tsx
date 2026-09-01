@@ -48,6 +48,23 @@ export default function Dashboard() {
     visitors: number;
     today: number;
   } | null>(null);
+  const [dark, setDark] = useState(false);
+
+  // Joriy rejimni aniqlaymiz (layout'dagi skript allaqachon .dark klassini qo'ygan).
+  useEffect(() => {
+    setDark(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  const toggleTheme = () => {
+    const next = !document.documentElement.classList.contains("dark");
+    document.documentElement.classList.toggle("dark", next);
+    try {
+      localStorage.setItem("theme", next ? "dark" : "light");
+    } catch {
+      // e'tiborsiz
+    }
+    setDark(next);
+  };
 
   const load = useCallback(async () => {
     const res = await fetch("/api/data", { cache: "no-store" });
@@ -208,7 +225,7 @@ export default function Dashboard() {
             onClick={() => isOwner && avatarInputRef.current?.click()}
             disabled={!isOwner || avatarBusy}
             className={[
-              "relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-border-soft bg-neutral-100 sm:h-16 sm:w-16",
+              "relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-border-soft bg-surface-2 sm:h-16 sm:w-16",
               isOwner ? "cursor-pointer" : "cursor-default",
             ].join(" ")}
             title={isOwner ? "Rasmni o'zgartirish" : config.ownerName}
@@ -221,7 +238,7 @@ export default function Dashboard() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="grid h-full w-full place-items-center text-xl font-bold text-neutral-400">
+              <span className="grid h-full w-full place-items-center text-xl font-bold text-muted">
                 {config.ownerName.charAt(0).toUpperCase()}
               </span>
             )}
@@ -250,9 +267,16 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={toggleTheme}
+            aria-label="Rejimni almashtirish"
+            className="grid h-8 w-8 place-items-center rounded-full border border-border-soft bg-card text-sm transition hover:border-strong"
+          >
+            {dark ? "☀️" : "🌙"}
+          </button>
           {isOwner ? (
             <>
-              <span className="rounded-full bg-neutral-800 px-3 py-1 text-xs font-medium text-white">
+              <span className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-fg">
                 Egasi
               </span>
               <div className="flex gap-2">
@@ -276,7 +300,7 @@ export default function Dashboard() {
           ) : (
             <button
               onClick={() => setLoginOpen(true)}
-              className="rounded-full border border-border-soft bg-card px-3 py-1.5 text-xs font-medium text-muted transition hover:border-neutral-300"
+              className="rounded-full border border-border-soft bg-card px-3 py-1.5 text-xs font-medium text-muted transition hover:border-strong"
             >
               Egasi kirishi
             </button>
@@ -436,7 +460,7 @@ function TodayCard({
       className={[
         "fade-up mb-5 flex items-center justify-between gap-3 rounded-2xl border p-4 sm:p-5",
         went
-          ? "border-neutral-800 bg-neutral-800 text-white shadow-[0_4px_20px_rgba(0,0,0,0.35)]"
+          ? "border-accent bg-accent text-accent-fg shadow-[0_4px_20px_rgba(0,0,0,0.35)]"
           : "border-border-soft bg-card",
       ].join(" ")}
     >
@@ -444,7 +468,7 @@ function TodayCard({
         <p
           className={[
             "text-xs font-medium uppercase tracking-widest",
-            went ? "text-white/70" : "text-muted",
+            went ? "text-accent-fg/70" : "text-muted",
           ].join(" ")}
         >
           Bugun
@@ -458,8 +482,8 @@ function TodayCard({
         className={[
           "shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-95",
           went
-            ? "bg-white text-neutral-900 hover:bg-neutral-100"
-            : "bg-neutral-800 text-white hover:bg-neutral-900",
+            ? "bg-accent-fg text-accent hover:opacity-90"
+            : "bg-accent text-accent-fg hover:opacity-90",
         ].join(" ")}
       >
         {went ? "Ko'rish" : isOwner ? "Bugun bordim" : "Belgilash"}
@@ -503,8 +527,8 @@ function ReactionsBar({
               className={[
                 "flex flex-col items-center gap-1 rounded-xl border py-3 transition active:scale-90",
                 active
-                  ? "border-neutral-800 bg-neutral-100"
-                  : "border-border-soft hover:border-neutral-300",
+                  ? "border-accent bg-surface-2"
+                  : "border-border-soft hover:border-strong",
               ].join(" ")}
             >
               <span className={popped === e ? "mark-pop text-2xl" : "text-2xl"}>{e}</span>
@@ -552,14 +576,14 @@ function StatsGrid({ stats, config }: { stats: Stats; config: Config }) {
           className={[
             "rounded-xl border p-3",
             "highlight" in it && it.highlight
-              ? "border-neutral-800 bg-neutral-800 text-white shadow-[0_2px_12px_rgba(0,0,0,0.3)]"
+              ? "border-accent bg-accent text-accent-fg shadow-[0_2px_12px_rgba(0,0,0,0.3)]"
               : "border-border-soft bg-card",
           ].join(" ")}
         >
           <p
             className={[
               "text-[11px] font-medium",
-              "highlight" in it && it.highlight ? "text-white/60" : "text-muted",
+              "highlight" in it && it.highlight ? "text-accent-fg/60" : "text-muted",
             ].join(" ")}
           >
             {it.label}
@@ -586,8 +610,8 @@ function Achievements({ stats }: { stats: Stats }) {
             className={[
               "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition",
               a.unlocked
-                ? "border-neutral-800 bg-neutral-100 text-neutral-900"
-                : "border-dashed border-border-soft bg-transparent text-neutral-300",
+                ? "border-accent bg-surface-2 text-foreground"
+                : "border-dashed border-border-soft bg-transparent text-muted",
             ].join(" ")}
           >
             <span>{a.unlocked ? "🏅" : "🔒"}</span>
@@ -696,8 +720,8 @@ function DayModal({
     [
       "rounded-full border px-2.5 py-1.5 text-xs transition active:scale-95",
       active
-        ? "border-neutral-800 bg-neutral-800 text-white"
-        : "border-border-soft text-muted hover:border-neutral-300",
+        ? "border-accent bg-accent text-accent-fg"
+        : "border-border-soft text-muted hover:border-strong",
     ].join(" ");
 
   return (
@@ -729,7 +753,7 @@ function DayModal({
                 value={muscle}
                 onChange={(e) => setMuscle(e.target.value)}
                 placeholder="yoki o'zing yoz…"
-                className="w-full rounded-lg border border-border-soft bg-card px-3 py-2.5 text-base outline-none focus:border-neutral-400"
+                className="w-full rounded-lg border border-border-soft bg-card px-3 py-2.5 text-base outline-none focus:border-strong"
               />
             </div>
 
@@ -753,7 +777,7 @@ function DayModal({
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted">
                 Rasm{" "}
-                <span className="font-normal text-neutral-400">
+                <span className="font-normal text-muted">
                   (ixtiyoriy · faqat kamera)
                 </span>
               </label>
@@ -784,7 +808,7 @@ function DayModal({
                 <button
                   onClick={() => fileRef.current?.click()}
                   disabled={photoBusy}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-4 py-4 text-sm font-medium text-muted transition hover:border-neutral-400 hover:text-neutral-800 disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-strong bg-surface px-4 py-4 text-sm font-medium text-muted transition hover:border-strong hover:text-foreground disabled:opacity-60"
                 >
                   {photoBusy ? "Tayyorlanmoqda…" : "📷 Kamera orqali rasm olish"}
                 </button>
@@ -808,7 +832,7 @@ function DayModal({
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 placeholder="Bugun qanday o'tdi?"
-                className="w-full resize-none rounded-lg border border-border-soft bg-card px-3 py-2.5 text-base outline-none focus:border-neutral-400"
+                className="w-full resize-none rounded-lg border border-border-soft bg-card px-3 py-2.5 text-base outline-none focus:border-strong"
               />
             </div>
 
@@ -816,7 +840,7 @@ function DayModal({
               <button
                 onClick={save}
                 disabled={saving}
-                className="flex-1 rounded-xl bg-neutral-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-900 active:scale-95 disabled:opacity-60"
+                className="flex-1 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90 active:scale-95 disabled:opacity-60"
               >
                 {saving ? "Saqlanmoqda…" : went ? "Saqlash" : "Bordim ✅"}
               </button>
@@ -905,13 +929,13 @@ function LoginModal({
         onChange={(e) => setPin(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && submit()}
         placeholder="PIN"
-        className="mt-4 w-full rounded-lg border border-border-soft bg-card px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+        className="mt-4 w-full rounded-lg border border-border-soft bg-card px-3 py-2.5 text-sm outline-none focus:border-strong"
       />
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
       <button
         onClick={submit}
         disabled={busy || !pin}
-        className="mt-4 w-full rounded-xl bg-neutral-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-900 active:scale-95 disabled:opacity-40"
+        className="mt-4 w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90 active:scale-95 disabled:opacity-40"
       >
         {busy ? "Tekshirilmoqda…" : "Kirish"}
       </button>
@@ -958,7 +982,7 @@ function SettingsModal({
           <div className="flex gap-2">
             <button
               onClick={onChangeAvatar}
-              className="flex-1 rounded-xl border border-border-soft px-4 py-2.5 text-sm font-medium transition hover:border-neutral-300"
+              className="flex-1 rounded-xl border border-border-soft px-4 py-2.5 text-sm font-medium transition hover:border-strong"
             >
               📷 Rasm tanlash
             </button>
@@ -977,7 +1001,7 @@ function SettingsModal({
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-border-soft bg-card px-3 py-2 text-sm outline-none focus:border-neutral-400"
+            className="w-full rounded-lg border border-border-soft bg-card px-3 py-2 text-sm outline-none focus:border-strong"
           />
         </div>
         <div>
@@ -990,12 +1014,12 @@ function SettingsModal({
             max={7}
             value={goal}
             onChange={(e) => setGoal(Number(e.target.value))}
-            className="w-full accent-neutral-800"
+            className="w-full accent-neutral-500"
           />
         </div>
         <button
           onClick={save}
-          className="w-full rounded-xl bg-neutral-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-900 active:scale-95"
+          className="w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90 active:scale-95"
         >
           Saqlash
         </button>

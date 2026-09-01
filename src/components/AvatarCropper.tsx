@@ -109,7 +109,7 @@ export default function AvatarCropper({ src, onCancel, onSave, saving }: Props) 
           <>
             <div className="mx-auto" style={{ width: FRAME }}>
               <div
-                className="relative overflow-hidden rounded-full border-2 border-border-soft bg-neutral-100"
+                className="relative overflow-hidden rounded-full border-2 border-border-soft bg-surface-2"
                 style={{ width: FRAME, height: FRAME, touchAction: "none" }}
                 onPointerDown={onDown}
                 onPointerMove={onMove}
@@ -144,7 +144,7 @@ export default function AvatarCropper({ src, onCancel, onSave, saving }: Props) 
                   step={0.01}
                   value={scale}
                   onChange={(e) => applyScale(Number(e.target.value))}
-                  className="w-full accent-neutral-800"
+                  className="w-full accent-neutral-500"
                 />
                 <span className="text-xs text-muted">➕</span>
               </div>
@@ -153,14 +153,14 @@ export default function AvatarCropper({ src, onCancel, onSave, saving }: Props) 
             <div className="mt-4 flex gap-2">
               <button
                 onClick={onCancel}
-                className="flex-1 rounded-xl border border-border-soft px-4 py-3 text-sm font-medium text-muted transition hover:border-neutral-300"
+                className="flex-1 rounded-xl border border-border-soft px-4 py-3 text-sm font-medium text-muted transition hover:border-strong"
               >
                 Bekor
               </button>
               <button
                 onClick={save}
                 disabled={saving || !img}
-                className="flex-1 rounded-xl bg-neutral-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-900 disabled:opacity-50"
+                className="flex-1 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90 disabled:opacity-50"
               >
                 {saving ? "Saqlanmoqda…" : "Saqlash"}
               </button>

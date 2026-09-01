@@ -49,7 +49,7 @@ export default function MonthlyChart({ days, monthsBack = 12 }: Props) {
               <div
                 className={[
                   "w-full max-w-[26px] rounded-md transition-all",
-                  b.count > 0 ? "bg-neutral-800" : "bg-neutral-200",
+                  b.count > 0 ? "bg-accent" : "bg-surface-2",
                 ].join(" ")}
                 style={{ height: h }}
                 title={`${b.label} ${b.year}: ${b.count}`}
