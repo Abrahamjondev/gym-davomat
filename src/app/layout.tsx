@@ -10,7 +10,12 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "Gym Davomat — ABRHAM",
   description: "Shaxsiy gym davomati. Hamma ko'ra oladi, faqat egasi belgilaydi.",
+  manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Gym Davomat", statusBarStyle: "default" },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

@@ -13,6 +13,12 @@ const VIEWS_KEY = "gym:views";
 const VISITORS_KEY = "gym:visitors";
 const AVATAR_KEY = "gym:avatar";
 const REACTIONS_KEY = "gym:reactions";
+const PUSH_KEY = "gym:push";
+
+export interface PushSub {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
 
 export const REACTIONS = ["💪", "🔥", "👏", "❤️"] as const;
 export type ReactionCounts = Record<string, number>;
@@ -134,6 +140,22 @@ function normalizeReactions(raw: Record<string, unknown>): ReactionCounts {
   return out;
 }
 
+async function redisGetPushSubs(): Promise<PushSub[]> {
+  const redis = await redisClient();
+  const h = await redis.hgetall<Record<string, PushSub>>(PUSH_KEY);
+  return h ? Object.values(h) : [];
+}
+
+async function redisAddPushSub(sub: PushSub) {
+  const redis = await redisClient();
+  await redis.hset(PUSH_KEY, { [sub.endpoint]: sub });
+}
+
+async function redisRemovePushSub(endpoint: string) {
+  const redis = await redisClient();
+  await redis.hdel(PUSH_KEY, endpoint);
+}
+
 // ---------- File backend (dev) ----------
 import { promises as fs } from "fs";
 import path from "path";
@@ -154,6 +176,7 @@ interface RawFile {
   meta: Meta;
   reactions: ReactionCounts;
   avatar?: string; // dataURL
+  push: Record<string, PushSub>; // endpoint -> subscription
 }
 
 async function fileReadRaw(): Promise<RawFile> {
@@ -171,6 +194,7 @@ async function fileReadRaw(): Promise<RawFile> {
       },
       reactions: normalizeReactions(parsed.reactions ?? {}),
       avatar: parsed.avatar,
+      push: parsed.push ?? {},
     };
   } catch {
     return {
@@ -179,6 +203,7 @@ async function fileReadRaw(): Promise<RawFile> {
       photos: {},
       meta: { views: 0, visitors: 0, daily: {} },
       reactions: normalizeReactions({}),
+      push: {},
     };
   }
 }
@@ -313,6 +338,26 @@ export async function changeReaction(
   raw.reactions[emoji] = Math.max(0, (raw.reactions[emoji] ?? 0) + delta);
   await fileWriteRaw(raw);
   return normalizeReactions(raw.reactions);
+}
+
+export async function getPushSubs(): Promise<PushSub[]> {
+  if (hasRedis) return redisGetPushSubs();
+  const raw = await fileReadRaw();
+  return Object.values(raw.push);
+}
+
+export async function addPushSub(sub: PushSub): Promise<void> {
+  if (hasRedis) return redisAddPushSub(sub);
+  const raw = await fileReadRaw();
+  raw.push[sub.endpoint] = sub;
+  await fileWriteRaw(raw);
+}
+
+export async function removePushSub(endpoint: string): Promise<void> {
+  if (hasRedis) return redisRemovePushSub(endpoint);
+  const raw = await fileReadRaw();
+  delete raw.push[endpoint];
+  await fileWriteRaw(raw);
 }
 
 export function usingRedis() {

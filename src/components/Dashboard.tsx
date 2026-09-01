@@ -11,6 +11,15 @@ import MonthCalendar from "./MonthCalendar";
 import YearHeatmap from "./YearHeatmap";
 import MonthlyChart from "./MonthlyChart";
 import AvatarCropper from "./AvatarCropper";
+import GoalRing from "./GoalRing";
+import Analytics from "./Analytics";
+import PhotoGallery from "./PhotoGallery";
+import { pushSupported, getSubscription, enablePush, disablePush } from "@/lib/push";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: string }>;
+}
 
 const REACTIONS = ["💪", "🔥", "👏", "❤️"];
 
@@ -84,6 +93,26 @@ export default function Dashboard() {
       .then(setCounts)
       .catch(() => {});
   }, []);
+
+  // PWA: service worker'ni ro'yxatdan o'tkazamiz + o'rnatish taklifini ushlaymiz.
+  const [installEvt, setInstallEvt] = useState<BeforeInstallPromptEvent | null>(null);
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallEvt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
+  }, []);
+
+  const doInstall = async () => {
+    if (!installEvt) return;
+    await installEvt.prompt();
+    setInstallEvt(null);
+  };
 
   const isOwner = data?.isOwner ?? false;
   const days = data?.days ?? {};
@@ -330,6 +359,22 @@ export default function Dashboard() {
         onMark={markToday}
       />
 
+      {/* Ilovani o'rnatish taklifi */}
+      {installEvt && (
+        <button
+          onClick={doInstall}
+          className="fade-up mb-5 flex w-full items-center justify-between rounded-2xl border border-accent bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition active:scale-[0.99]"
+        >
+          <span>📲 Ilovani telefonga o&apos;rnatish</span>
+          <span className="text-xs opacity-70">o&apos;rnatish ›</span>
+        </button>
+      )}
+
+      {/* Haftalik maqsad halqasi */}
+      <div className="mb-5">
+        <GoalRing value={stats.thisWeekCount} max={config.weeklyGoal} />
+      </div>
+
       {/* Statistika */}
       <StatsGrid stats={stats} config={config} />
 
@@ -369,7 +414,12 @@ export default function Dashboard() {
         />
 
         <MonthlyChart days={days} />
+
+        <Analytics days={days} />
       </div>
+
+      {/* Rasm galereyasi */}
+      <PhotoGallery days={days} onOpen={(k) => setSelectedKey(k)} />
 
       {/* Reaksiyalar — hamma bir marta bosishi mumkin */}
       <ReactionsBar
@@ -961,6 +1011,29 @@ function SettingsModal({
 }) {
   const [goal, setGoal] = useState(config.weeklyGoal);
   const [name, setName] = useState(config.ownerName);
+  const [notifOn, setNotifOn] = useState(false);
+  const [notifBusy, setNotifBusy] = useState(false);
+  const canNotify = pushSupported();
+
+  useEffect(() => {
+    getSubscription().then((s) => setNotifOn(!!s));
+  }, []);
+
+  const toggleNotif = async () => {
+    setNotifBusy(true);
+    try {
+      if (notifOn) {
+        await disablePush();
+        setNotifOn(false);
+      } else {
+        const ok = await enablePush();
+        setNotifOn(ok);
+        if (!ok) alert("Bildirishnomaga ruxsat berilmadi.");
+      }
+    } finally {
+      setNotifBusy(false);
+    }
+  };
 
   const save = async () => {
     await fetch("/api/config", {
@@ -1017,6 +1090,33 @@ function SettingsModal({
             className="w-full accent-neutral-500"
           />
         </div>
+        {canNotify && (
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-muted">
+              Eslatma (bildirishnoma)
+            </label>
+            <button
+              onClick={toggleNotif}
+              disabled={notifBusy}
+              className={[
+                "w-full rounded-xl border px-4 py-2.5 text-sm font-medium transition disabled:opacity-60",
+                notifOn
+                  ? "border-accent bg-accent text-accent-fg"
+                  : "border-border-soft hover:border-strong",
+              ].join(" ")}
+            >
+              {notifBusy
+                ? "..."
+                : notifOn
+                  ? "🔔 Eslatma yoqilgan (o'chirish)"
+                  : "🔕 Eslatmani yoqish"}
+            </button>
+            <p className="mt-1 text-[11px] text-muted">
+              Gym kuni bormasangiz, kuniga bir marta eslatib turadi. (iPhone&apos;da
+              avval ilovani ekranga o&apos;rnating.)
+            </p>
+          </div>
+        )}
         <button
           onClick={save}
           className="w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90 active:scale-95"
